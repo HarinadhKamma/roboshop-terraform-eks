@@ -48,6 +48,37 @@ VALIDATE(){ # functions receive inputs through args just like shell script args
     fi
 }
 
+CURRENT_CP_VERSION=$(aws eks describe-cluster \
+  --name "$CLUSTER_NAME" \
+  --region "$AWS_REGION" \
+  --query 'cluster.version' \
+  --output text)
+VALIDATE $? "Fetch current control plane version"
+
+echo -e "${Y}Current CP version: ${CURRENT_CP_VERSION}${N}" | tee -a "$LOG_FILE"
+echo -e "${Y}Target  CP version: ${EKS_TARGET_VERSION}${N}" | tee -a "$LOG_FILE"
+
+CUR_MAJOR=$(echo "$CURRENT_CP_VERSION" | cut -d. -f1)
+CUR_MINOR=$(echo "$CURRENT_CP_VERSION" | cut -d. -f2)
+
+TGT_MAJOR=$(echo "$EKS_TARGET_VERSION" | cut -d. -f1)
+TGT_MINOR=$(echo "$EKS_TARGET_VERSION" | cut -d. -f2)
+
+# basic sanity
+if [[ -z "$CUR_MAJOR" || -z "$CUR_MINOR" || -z "$TGT_MAJOR" || -z "$TGT_MINOR" ]]; then
+  echo -e "${R}Unable to parse versions. current=$CURRENT_CP_VERSION target=$EKS_TARGET_VERSION${N}" | tee -a "$LOG_FILE"
+  exit 1
+fi
+
+# must be same major and exactly +1 minor
+if [[ "$CUR_MAJOR" != "$TGT_MAJOR" || $((TGT_MINOR - CUR_MINOR)) -ne 1 ]]; then
+  echo -e "${R}ABORT:${N} Target version must be exactly one minor step ahead. current=$CURRENT_CP_VERSION target=$EKS_TARGET_VERSION" | tee -a "$LOG_FILE"
+  exit 1
+fi
+
+echo -e "${G}Version check passed:${N} $CURRENT_CP_VERSION -> $EKS_TARGET_VERSION" | tee -a "$LOG_FILE"
+
+
 # terraform plan -var="eks_version=$3" -var="eks_nodegroup_version=$4" -out=tfplan | tee -a "$LOG_FILE"
 # terraform show tfplan | tee -a "$LOG_FILE"
 
