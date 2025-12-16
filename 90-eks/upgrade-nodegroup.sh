@@ -99,3 +99,18 @@ else
 fi
 
 echo -e "${Y}Planned versions: blue=$NG_BLUE_VERSION green=$NG_GREEN_VERSION cp=$CP_VERSION${N}" | tee -a "$LOG_FILE"
+
+
+terraform plan \
+  -var="eks_version=$CP_VERSION" \
+  -var="enable_blue=$ENABLE_BLUE" \
+  -var="enable_green=$ENABLE_GREEN" \
+  -var="eks_nodegroup_blue_version=$NG_BLUE_VERSION" \
+  -var="eks_nodegroup_green_version=$NG_GREEN_VERSION" | tee -a "$LOG_FILE"
+
+terraform apply \
+  -var="eks_version=$CP_VERSION" \
+  -var="enable_blue=$ENABLE_BLUE" \
+  -var="enable_green=$ENABLE_GREEN" \
+  -var="eks_nodegroup_blue_version=$NG_BLUE_VERSION" \
+  -var="eks_nodegroup_green_version=$NG_GREEN_VERSION" | tee -a "$LOG_FILE"
