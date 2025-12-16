@@ -144,9 +144,13 @@ latest_compatible_addon_version() {
   aws eks describe-addon-versions \
     --addon-name "$addon" \
     --region "$AWS_REGION" \
-    --query "addons[0].addonVersions[?compatibilities[?clusterVersion=='${cp_ver}']]|[-1].addonVersion" \
-    --output text 2>/dev/null || echo "None"
+    --query "addons[0].addonVersions[?compatibilities[?clusterVersion=='${cp_ver}']].addonVersion" \
+    --output text 2>/dev/null \
+  | tr '\t' '\n' \
+  | sort -V \
+  | tail -n 1
 }
+
 
 
 
