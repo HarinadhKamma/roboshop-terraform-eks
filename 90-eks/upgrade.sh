@@ -151,18 +151,18 @@ latest_compatible_addon_version() {
 wait_addon_active_and_version(){
   local addon="$1"
   local expected="$2"
-  log "${Y}Waiting for addon $addon to be ACTIVE at version=$expected ...${N}"
+  echo -e "${Y}Waiting for addon $addon to be ACTIVE at version=$expected ...${N}"
   while true; do
     local st ver
     st=$(addon_status "$addon")
     ver=$(addon_version "$addon")
-    log "Addon $addon status=$st version=$ver"
+    echo -e "Addon $addon status=$st version=$ver"
     if [[ "$st" == "ACTIVE" && "$ver" == "$expected" ]]; then
-      log "${G}Addon $addon upgraded OK: $ver${N}"
+      echo -e "${G}Addon $addon upgraded OK: $ver${N}"
       break
     fi
     if [[ "$st" == "DEGRADED" || "$st" == "UPDATE_FAILED" || "$st" == "FAILED" ]]; then
-      log "${R}Addon $addon upgrade problem: status=$st${N}"
+      echo -e "${R}Addon $addon upgrade problem: status=$st${N}"
       exit 1
     fi
     if [[ "$st" == "MISSING" ]]; then
@@ -177,7 +177,7 @@ upgrade_addons_to_latest_compatible(){
   local cp_ver="$1"
   for addon in "${ADDONS[@]}"; do
     if ! addon_installed "$addon"; then
-      log "${Y}Addon $addon not installed on cluster. Skipping.${N}"
+      echo -e "${Y}Addon $addon not installed on cluster. Skipping.${N}"
       continue
     fi
 
@@ -186,14 +186,14 @@ upgrade_addons_to_latest_compatible(){
     latest=$(latest_compatible_addon_version "$addon" "$cp_ver")
 
     if [[ -z "$latest" || "$latest" == "None" ]]; then
-      log "${R}Could not find compatible latest version for addon $addon on cluster $cp_ver${N}"
+      echo -e "${R}Could not find compatible latest version for addon $addon on cluster $cp_ver${N}"
       exit 1
     fi
 
-    log "${Y}Addon $addon current=$current latest_compatible=$latest${N}"
+    echo -e "${Y}Addon $addon current=$current latest_compatible=$latest${N}"
 
     if [[ "$current" == "$latest" ]]; then
-      log "${G}Addon $addon already at latest compatible version${N}"
+      echo -e "${G}Addon $addon already at latest compatible version${N}"
       continue
     fi
 
