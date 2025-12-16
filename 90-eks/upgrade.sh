@@ -85,9 +85,15 @@ aws eks update-cluster-version \
   --region "$AWS_REGION" \
   --kubernetes-version "$EKS_TARGET_VERSION" &>> "$LOG_FILE"
 VALIDATE $? "Trigger control plane upgrade"
+get_cluster_status() {
+  aws eks describe-cluster --name "$CLUSTER_NAME" --region "$AWS_REGION" \
+    --query 'cluster.status' --output text
+}
 
-wait_cluster_upgraded "$EKS_TARGET_VERSION"
-
+get_cluster_version() {
+  aws eks describe-cluster --name "$CLUSTER_NAME" --region "$AWS_REGION" \
+    --query 'cluster.version' --output text
+}
 wait_cluster_upgraded() {
   local expected="$1"
   echo -e "${Y}Waiting for cluster to become ACTIVE and version=$expected...${N}" | tee -a "$LOG_FILE"
@@ -111,15 +117,11 @@ wait_cluster_upgraded() {
   done
 }
 
-get_cluster_status() {
-  aws eks describe-cluster --name "$CLUSTER_NAME" --region "$AWS_REGION" \
-    --query 'cluster.status' --output text
-}
+wait_cluster_upgraded "$EKS_TARGET_VERSION"
 
-get_cluster_version() {
-  aws eks describe-cluster --name "$CLUSTER_NAME" --region "$AWS_REGION" \
-    --query 'cluster.version' --output text
-}
+
+
+
 
 addon_installed() {
   aws eks describe-addon \
