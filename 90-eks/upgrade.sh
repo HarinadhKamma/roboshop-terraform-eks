@@ -148,6 +148,7 @@ latest_compatible_addon_version() {
     --output text 2>/dev/null || echo "None"
 }
 
+
 wait_addon_active_and_version(){
   local addon="$1"
   local expected="$2"
