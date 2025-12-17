@@ -1,46 +1,46 @@
 #!/bin/bash
 
-##### Colors ####
+#########
+# Colors
+#########
 R="\e[31m"
 G="\e[32m"
 Y="\e[33m"
 N="\e[0m"
 
+#########
+# Cluster Region and Name
+#########
 CLUSTER_NAME="roboshop-dev"
 AWS_REGION="us-east-1"
-EKS_TARGET_VERSION=$1
-# CURRENT_NG_VERSION=$2
-# TARGET_NG_VERSION=""
 
-LOGS_FOLDER="/var/log/eks-upgrade"
+EKS_TARGET_VERSION=$1
+
+LOGS_FOLDER="/home/ec2-user/eks-upgrade"
 SCRIPT_NAME=$( echo $0 | cut -d "." -f1 )
 SCRIPT_DIR=$PWD
 LOG_FILE="$LOGS_FOLDER/$SCRIPT_NAME.log" # /var/log/shell-script/16-logs.log
 
-#mkdir -p $LOGS_FOLDER
+mkdir -p $LOGS_FOLDER
 echo "Script started executed at: $(date)" | tee -a $LOG_FILE
 
+#########
+# Checking the args passed
+#########
 if [ "$#" -ne 1 ]; then
   echo -e "${R}Usage:${N} $0 <EKS_TARGET_VERSION>" | tee -a "$LOG_FILE"
   echo -e "${R}Example:${N} $0 1.34" | tee -a "$LOG_FILE"
   exit 1
 fi
 
-# Validate CURRENT_NG_VERSION
-# if [[ "$CURRENT_NG_VERSION" != "blue" && "$CURRENT_NG_VERSION" != "green" ]]; then
-#   echo -e "${R}CURRENT_NG_VERSION must be either 'blue' or 'green'${N}" | tee -a "$LOG_FILE"
-#   exit 1
-# fi
-
+#########
+# Get the addons of the cluster, we upgrade addons once control plane is upgraded
+#########
 ADDONS=$(aws eks list-addons --cluster-name "$CLUSTER_NAME" --region "$AWS_REGION" --output text | awk '{print $2}')
 
-# Auto-derive TARGET_NG_VERSION
-# if [[ "$CURRENT_NG_VERSION" == "blue" ]]; then
-#   TARGET_NG_VERSION="green"
-# else
-#   TARGET_NG_VERSION="blue"
-# fi
-
+#########
+# Validate Function
+#########
 VALIDATE(){ # functions receive inputs through args just like shell script args
     if [ $1 -ne 0 ]; then
         echo -e "$2 ... $R FAILURE $N" | tee -a $LOG_FILE
@@ -50,6 +50,9 @@ VALIDATE(){ # functions receive inputs through args just like shell script args
     fi
 }
 
+#########
+# Get the current CP version
+#########
 CURRENT_CP_VERSION=$(aws eks describe-cluster \
   --name "$CLUSTER_NAME" \
   --region "$AWS_REGION" \
@@ -57,22 +60,29 @@ CURRENT_CP_VERSION=$(aws eks describe-cluster \
   --output text)
 VALIDATE $? "Fetch current control plane version"
 
-echo -e "${Y}Current CP version: ${CURRENT_CP_VERSION}${N}" | tee -a "$LOG_FILE"
-echo -e "${Y}Target  CP version: ${EKS_TARGET_VERSION}${N}" | tee -a "$LOG_FILE"
+echo -e "Current CP version: ${Y} ${CURRENT_CP_VERSION} ${N}" | tee -a "$LOG_FILE"
+echo -e "Target  CP version: ${Y} ${EKS_TARGET_VERSION} ${N}" | tee -a "$LOG_FILE"
 
+#########
+# Get the current and target Major and Minor versions
+#########
 CUR_MAJOR=$(echo "$CURRENT_CP_VERSION" | cut -d. -f1)
 CUR_MINOR=$(echo "$CURRENT_CP_VERSION" | cut -d. -f2)
 
 TGT_MAJOR=$(echo "$EKS_TARGET_VERSION" | cut -d. -f1)
 TGT_MINOR=$(echo "$EKS_TARGET_VERSION" | cut -d. -f2)
 
-# basic sanity
+#########
+# check version variables are not empty
+#########
 if [[ -z "$CUR_MAJOR" || -z "$CUR_MINOR" || -z "$TGT_MAJOR" || -z "$TGT_MINOR" ]]; then
   echo -e "${R}Unable to parse versions. current=$CURRENT_CP_VERSION target=$EKS_TARGET_VERSION${N}" | tee -a "$LOG_FILE"
   exit 1
 fi
 
-# must be same major and exactly +1 minor
+#########
+# Must be same major, but exactly one step above minor
+#########
 if [[ "$CUR_MAJOR" != "$TGT_MAJOR" || $((TGT_MINOR - CUR_MINOR)) -ne 1 ]]; then
   echo -e "${R}ABORT:${N} Target version must be exactly one minor step ahead. current=$CURRENT_CP_VERSION target=$EKS_TARGET_VERSION" | tee -a "$LOG_FILE"
   exit 1
@@ -80,12 +90,13 @@ fi
 
 echo -e "${G}Version check passed:${N} $CURRENT_CP_VERSION -> $EKS_TARGET_VERSION" | tee -a "$LOG_FILE"
 
-echo -e "$Y Upgrading Control plane version $N"
+echo "Upgrading Control plane version"
 aws eks update-cluster-version \
   --name "$CLUSTER_NAME" \
   --region "$AWS_REGION" \
   --kubernetes-version "$EKS_TARGET_VERSION" &>> "$LOG_FILE"
 VALIDATE $? "Trigger control plane upgrade"
+
 get_cluster_status() {
   aws eks describe-cluster --name "$CLUSTER_NAME" --region "$AWS_REGION" \
     --query 'cluster.status' --output text
@@ -106,12 +117,12 @@ wait_cluster_upgraded() {
     echo "Cluster status=$status version=$version" | tee -a "$LOG_FILE"
 
     if [[ "$status" == "ACTIVE" && "$version" == "$expected" ]]; then
-      echo -e "${G}Control plane upgraded successfully to $version${N}" | tee -a "$LOG_FILE"
+      echo -e "Control plane upgraded to $version ... ${G}SUCCESS${N}" | tee -a "$LOG_FILE"
       break
     fi
 
     if [[ "$status" == "FAILED" ]]; then
-      echo -e "${R}Control plane upgrade FAILED${N}" | tee -a "$LOG_FILE"
+      echo -e "Control plane upgraded to $version ... ${G}FAILURE${N}" | tee -a "$LOG_FILE"
       exit 1
     fi
     sleep 60
@@ -119,10 +130,6 @@ wait_cluster_upgraded() {
 }
 
 wait_cluster_upgraded "$EKS_TARGET_VERSION"
-
-
-
-
 
 addon_installed() {
   aws eks describe-addon \
