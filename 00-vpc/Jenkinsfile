@@ -27,6 +27,7 @@ pipeline {
                 script{
                     withAWS(region:'us-east-1',credentials:'aws-creds') {
                         sh """
+                            pwd
                             terraform init
                         """
                     }
