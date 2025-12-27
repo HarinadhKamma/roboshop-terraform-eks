@@ -28,7 +28,7 @@ pipeline {
                 script{
                     withAWS(region:'us-east-1',credentials:'aws-creds') {
                         sh """
-                            cd 00-vpc
+                            cd 10-sg
                             terraform init
                         """
                     }
@@ -40,7 +40,7 @@ pipeline {
                 script{
                     withAWS(region:'us-east-1',credentials:'aws-creds') {
                         sh """
-                            cd 00-vpc
+                            cd 10-sg
                             terraform plan
                         """
                     }
@@ -61,19 +61,10 @@ pipeline {
                 script{
                     withAWS(region:'us-east-1',credentials:'aws-creds') {
                         sh """
-                            cd 00-vpc
+                            cd 10-sg
                             terraform apply -auto-approve
                         """
                     }
-                }
-            }
-        }
-        stage('Trigger SG') {
-            steps {
-                script {
-                    build job: '10-sg',
-                        wait: false, // Wait for completion
-                        propagate: false, // Propagate status
                 }
             }
         }
