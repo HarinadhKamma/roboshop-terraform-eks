@@ -28,7 +28,7 @@ pipeline {
                 script{
                     withAWS(region:'us-east-1',credentials:'aws-creds') {
                         sh """
-                            cd 00-vpc
+                            cd 10-sg
                             terraform init
                         """
                     }
@@ -40,7 +40,7 @@ pipeline {
                 script{
                     withAWS(region:'us-east-1',credentials:'aws-creds') {
                         sh """
-                            cd 00-vpc
+                            cd 10-sg
                             terraform plan
                         """
                     }
@@ -48,26 +48,77 @@ pipeline {
             }
         }
         stage('Deploy') {
-            input {
-                message "Should we continue?"
-                ok "Yes, we should."
-                submitter "alice,bob"
-                parameters {
-                    string(name: 'PERSON', defaultValue: 'Mr Jenkins', description: 'Who should I say hello to?')
-                }
-            }
-            
+                      
             steps {
                 script{
                     withAWS(region:'us-east-1',credentials:'aws-creds') {
                         sh """
-                            cd 00-vpc
+                            cd 10-sg
                             terraform apply -auto-approve
                         """
                     }
                 }
             }
         }
+        stage('Parellel Trigger'){
+            parallel {
+                stage('Bastion'){
+                    steps {
+                        script {
+                            build job: '20-bastion',
+                                wait: false, // Wait for completion
+                                propagate: false // Propagate status
+                        }
+                    }
+                }
+                stage('SG Rules'){
+                    steps {
+                        script {
+                            build job: '30-sg-rules',
+                                wait: false, // Wait for completion
+                                propagate: false // Propagate status
+                        }
+                    }
+                }
+                stage('ECR'){
+                    steps {
+                        script {
+                            build job: '40-ecr',
+                                wait: false, // Wait for completion
+                                propagate: false // Propagate status
+                        }
+                    }
+                }
+                stage('ACM'){
+                    steps {
+                        script {
+                            build job: '70-acm',
+                                wait: false, // Wait for completion
+                                propagate: false // Propagate status
+                        }
+                    }
+                }
+                stage('EKS'){
+                    steps {
+                        script {
+                            build job: '90-eks',
+                                wait: false, // Wait for completion
+                                propagate: false // Propagate status
+                        }
+                    }
+                }
+            }
+        }
+        stage('ALB'){
+            steps {
+                script {
+                    build job: '80-frontend-alb',
+                        wait: false, // Wait for completion
+                        propagate: false // Propagate status
+                }
+            }
+        }
+
     }
     post{
         always{
