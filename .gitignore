@@ -4,7 +4,7 @@
 *.tfstate
 *.tfstate.*backup
 *.tfplan
-.tfvars
+#.tfvars
 .tfvars.json
 crash.log
 
