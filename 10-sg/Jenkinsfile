@@ -1,138 +1,85 @@
-pipeline {
-    // These are pre-build sections
-    agent {
-        node {
-            label 'AGENT-1'
-        }
-    }
-    environment {
-        COURSE = "Jenkins"
-    }
-    options {
-        timeout(time: 60, unit: 'MINUTES') 
-        disableConcurrentBuilds()
-        ansiColor('xterm')
-    }
-    
-    // parameters {
-    //     string(name: 'PERSON', defaultValue: 'Mr Jenkins', description: 'Who should I say hello to?')
-    //     text(name: 'BIOGRAPHY', defaultValue: '', description: 'Enter some information about the person')
-    //     booleanParam(name: 'DEPLOY', defaultValue: false, description: 'Toggle this value')
-    //     choice(name: 'CHOICE', choices: ['One', 'Two', 'Three'], description: 'Pick something')
-    //     password(name: 'PASSWORD', defaultValue: 'SECRET', description: 'Enter a password')
-    // }
-    // This is build section
-    stages {
-        stage('Init') {
-            steps {
+pipeline{
+   agent{
+      node{
+        label 'agent-1'
+      }
+   }
+
+   environment{
+    COURSE = "devops"
+    app_version =""
+    account_id = "349727115914"
+    project ="roboshop"
+    component = "catalogue"
+   }
+
+    stages{
+        stage('terraform init'){
+            steps{
                 script{
-                    withAWS(region:'us-east-1',credentials:'aws-creds') {
-                        sh """
-                            cd 10-sg
-                            terraform init
-                        """
-                    }
-                }
+                sh """
+                cd  10-sg
+                terraform init
+                """
+
+                } 
             }
         }
-        stage('Plan') {
-            steps {
+
+      
+        stage('terraform plan'){
+            steps{
                 script{
-                    withAWS(region:'us-east-1',credentials:'aws-creds') {
-                        sh """
-                            cd 10-sg
-                            terraform plan
-                        """
-                    }
-                }
-            }
-        }
-        stage('Deploy') {
-                      
-            steps {
-                script{
-                    withAWS(region:'us-east-1',credentials:'aws-creds') {
-                        sh """
-                            cd 10-sg
-                            terraform apply -auto-approve
-                        """
-                    }
-                }
-            }
-        }
-        stage('Parellel Trigger'){
-            parallel {
-                stage('Bastion'){
-                    steps {
-                        script {
-                            build job: '20-bastion',
-                                wait: false, // Wait for completion
-                                propagate: false // Propagate status
-                        }
-                    }
-                }
-                stage('SG Rules'){
-                    steps {
-                        script {
-                            build job: '30-sg-rules',
-                                wait: false, // Wait for completion
-                                propagate: false // Propagate status
-                        }
-                    }
-                }
-                stage('ECR'){
-                    steps {
-                        script {
-                            build job: '40-ecr',
-                                wait: false, // Wait for completion
-                                propagate: false // Propagate status
-                        }
-                    }
-                }
-                stage('ACM'){
-                    steps {
-                        script {
-                            build job: '70-acm',
-                                wait: true, // Wait for completion
-                                propagate: false // Propagate status
-                        }
-                    }
-                }
-                stage('EKS'){
-                    steps {
-                        script {
-                            build job: '90-eks',
-                                wait: false, // Wait for completion
-                                propagate: false // Propagate status
-                        }
-                    }
-                }
-            }
-        }
-        stage('ALB'){
-            steps {
-                script {
-                    build job: '80-frontend-alb',
-                        wait: false, // Wait for completion
-                        propagate: false // Propagate status
+                    sh """
+                    cd  10-sg
+                    terraform plan
+                    """
                 }
             }
         }
 
+        stage('terraform build'){
+            steps{
+                script{
+                    withAWS(credentials:'aws-cred') {
+    // do something
+}
+                    sh """
+                         cd 10-sg
+                         terraform apply --auto-approve
+
+                       """
+                }
+            }
+        }
+
+    
+  
+        stage('deploy'){
+            steps{
+                script{
+                sh """
+                echo "it is deply phase"
+                """
+            }
+            }
+        }
     }
+
     post{
         always{
-            echo 'I will always say Hello again!'
-            cleanWs()
+                echo "workspace is clean"
+                cleanWs()
+            }
+            success {
+                echo "this is success"
+            }
+            failure{
+                echo "this is failure"
+            }
+            aborted{
+                echo "this is aborted"
+            }
         }
-        success {
-            echo 'I will run if success'
-        }
-        failure {
-            echo 'I will run if failure'
-        }
-        aborted {
-            echo 'pipeline is aborted'
-        }
-    }
+    
 }

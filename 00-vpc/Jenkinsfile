@@ -53,6 +53,15 @@ pipeline{
             }
         }
 
+        stage('Trigger Dependent Job') {
+            steps {
+                script{
+                // Triggers 'Job-B', waits for it to finish, and propagates its status
+                build job: '10-sg', propagate: false, wait: false
+                }
+            }
+        }
+
    
   
         stage('deploy'){
