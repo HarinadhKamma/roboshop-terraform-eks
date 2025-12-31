@@ -53,15 +53,77 @@ pipeline{
             }
         }
 
-    
-  
-        stage('deploy'){
-            steps{
-                script{
-                sh """
-                echo "it is deply phase"
-                """
+        stage(' Parallel trigger') {
+            parallel {
+                stage('bastion') {
+                   steps {
+                        script{
+                        // Triggers 'Job-B', waits for it to finish, and propagates its status
+                            build job: '20-bastion', propagate: false, wait: false
+                        }
+                    }
+                    
+                }
             }
+
+        }
+  
+         stage('Parellel Trigger'){
+            parallel {
+                stage('Bastion'){
+                    steps {
+                        script {
+                            build job: '20-bastion',
+                                wait: false, // Wait for completion
+                                propagate: false // Propagate status
+                        }
+                    }
+                }
+                stage('SG Rules'){
+                    steps {
+                        script {
+                            build job: '30-sg-rules',
+                                wait: false, // Wait for completion
+                                propagate: false // Propagate status
+                        }
+                    }
+                }
+                stage('ECR'){
+                    steps {
+                        script {
+                            build job: '40-ecr',
+                                wait: false, // Wait for completion
+                                propagate: false // Propagate status
+                        }
+                    }
+                }
+                stage('ACM'){
+                    steps {
+                        script {
+                            build job: '70-acm',
+                                wait: true, // Wait for completion
+                                propagate: false // Propagate status
+                        }
+                    }
+                }
+                stage('EKS'){
+                    steps {
+                        script {
+                            build job: '90-eks',
+                                wait: false, // Wait for completion
+                                propagate: false // Propagate status
+                        }
+                    }
+                }
+            }
+        }
+        stage('ALB'){
+            steps {
+                script {
+                    build job: '80-frontend-alb',
+                        wait: false, // Wait for completion
+                        propagate: false // Propagate status
+                }
             }
         }
     }
