@@ -46,7 +46,8 @@ pipeline{
 }
                     sh """
                          cd 00-vpc
-                         terraform auto-approve
+                         terraform apply --auto-approve
+
                        """
                 }
             }
